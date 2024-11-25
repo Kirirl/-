@@ -1,0 +1,113 @@
+import sqlite3
+class Book:
+    """Модель книги."""
+    def __init__(self, title, author, year, status="Not Read", book_id=None):
+        self.id = book_id
+        self.title = title
+        self.author = author
+        self.year = year
+        self.status = status
+class Database:
+    """Клас для роботи з базою даних."""
+    def __init__(self, db_name="books.db"):
+        self.conn = sqlite3.connect(db_name)
+        self.create_table()
+    def create_table(self):
+        """Створює таблицю для книг, якщо вона не існує."""
+        with self.conn:
+            self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS books (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    author TEXT NOT NULL,
+                    year INTEGER NOT NULL,
+                    status TEXT NOT NULL
+                )
+            """)
+    def add_book(self, book: Book):
+        """Додає книгу до бази даних."""
+        with self.conn:
+            self.conn.execute("""
+                INSERT INTO books (title, author, year, status)
+                VALUES (?, ?, ?, ?)
+            """, (book.title, book.author, book.year, book.status))
+    def get_all_books(self):
+        """Повертає список усіх книг із бази даних."""
+        with self.conn:
+            cursor = self.conn.execute("SELECT id, title, author, year, status FROM books")
+            books = [Book(book_id=row[0], title=row[1], author=row[2], year=row[3], status=row[4])
+                     for row in cursor.fetchall()]
+            return books
+    def update_book_status(self, book_id, new_status):
+        """Оновлює статус книги."""
+        with self.conn:
+            self.conn.execute("""
+                UPDATE books SET status = ? WHERE id = ?
+            """, (new_status, book_id))
+    def delete_book(self, book_id):
+        """Видаляє книгу за її ID."""
+        with self.conn:
+            self.conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
+class BookManager:
+    """Клас для управління книгами."""
+    def __init__(self):
+        self.db = Database()
+    def add_book(self, title, author, year):
+        """Додає книгу до бази даних."""
+        book = Book(title, author, year)
+        self.db.add_book(book)
+        print(f"Книга '{title}' додана до бібліотеки!")
+    def view_books(self):
+        """Відображає список усіх книг."""
+        books = self.db.get_all_books()
+        if not books:
+            print("У бібліотеці немає книг.")
+        else:
+            for book in books:
+                print(f"[{book.id}] {book.title} - {book.author} ({book.year}) [{book.status}]")
+    def update_status(self, book_id, new_status):
+        """Оновлює статус книги."""
+        self.db.update_book_status(book_id, new_status)
+        print(f"Статус книги з ID {book_id} оновлено до '{new_status}'.")
+    def delete_book(self, book_id):
+        """Видаляє книгу з бази даних."""
+        self.db.delete_book(book_id)
+        print(f"Книга з ID {book_id} видалена з бібліотеки.")
+def main():
+    manager = BookManager()
+    while True:
+        print("\nМеню:")
+        print("1. Додати книгу")
+        print("2. Переглянути всі книги")
+        print("3. Оновити статус книги")
+        print("4. Видалити книгу")
+        print("5. Вийти")
+        choice = input("Виберіть дію: ")
+        if choice == "1":
+            title = input("Введіть назву книги: ").strip()
+            author = input("Введіть автора книги: ").strip()
+            year = input("Введіть рік видання: ").strip()
+            if not year.isdigit():
+                print("Рік видання повинен бути числом.")
+                continue
+            manager.add_book(title, author, int(year))
+        elif choice == "2":
+            print("\nСписок книг:")
+            manager.view_books()
+        elif choice == "3":
+            book_id = input("Введіть ID книги для оновлення статусу: ").strip()
+            new_status = input("Введіть новий статус (Read/Not Read): ").strip()
+            if new_status not in ["Read", "Not Read"]:
+                print("Невірний статус. Введіть 'Read' або 'Not Read'.")
+                continue
+            manager.update_status(int(book_id), new_status)
+        elif choice == "4":
+            book_id = input("Введіть ID книги для видалення: ").strip()
+            manager.delete_book(int(book_id))
+        elif choice == "5":
+            print("Програма завершена.")
+            break
+        else:
+            print("Невірний вибір. Спробуйте ще раз.")
+if __name__ == "__main__":
+    main()
